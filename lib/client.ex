@@ -1,23 +1,9 @@
 defmodule ExConn.Client do
-  @url ""
-  @headers %{}
-  @endpoints []
-
   defmacro __using__(_) do
     quote do
       Module.register_attribute(__MODULE__, :endpoints, accumulate: true)
 
-      import ExConn.Client,
-        only: [
-          url: 0,
-          url: 1,
-          headers: 0,
-          headers: 1,
-          endpoints: 0,
-          endpoint: 1,
-          endpoint: 2,
-          request: 2
-        ]
+      import ExConn.Client
     end
   end
 
@@ -25,6 +11,9 @@ defmodule ExConn.Client do
   defmacro url(opts) do
     quote bind_quoted: [opts: opts] do
       Module.put_attribute(__MODULE__, :url, opts)
+
+      @spec url :: String.t()
+      def url(), do: ExConn.Variable.resolve!(@url)
     end
   end
 
@@ -32,6 +21,9 @@ defmodule ExConn.Client do
   defmacro headers(opts) do
     quote bind_quoted: [opts: opts] do
       Module.put_attribute(__MODULE__, :headers, opts)
+
+      @spec headers :: map
+      def headers(), do: ExConn.Variable.resolve!(@headers)
     end
   end
 
@@ -47,23 +39,19 @@ defmodule ExConn.Client do
           allowed_params: params
         }
       })
+
+      @spec endpoints :: list(%ExConn.Endpoint{})
+      def endpoints(), do: Enum.reverse(@endpoints)
+
+      @spec endpoint(atom) :: %ExConn.Endpoint{}
+      def endpoint(name), do: @endpoints[name]
+
+      @spec request(atom, map) :: {:err, String.t()} | {:ok, %ExConn.Request{}}
+      def request(name, params) do
+        ExConn.Endpoint.request(endpoint(name), params, ExConn.Variable.resolve!(@headers))
+      end
+
+      defoverridable(endpoints: 0, endpoint: 1, request: 2)
     end
-  end
-
-  @spec url :: String.t()
-  def url(), do: ExConn.Variable.resolve!(@url)
-
-  @spec headers :: map
-  def headers(), do: ExConn.Variable.resolve!(@headers)
-
-  @spec endpoints :: list(%ExConn.Endpoint{})
-  def endpoints(), do: Enum.reverse(@endpoints)
-
-  @spec endpoint(atom) :: %ExConn.Endpoint{}
-  def endpoint(name), do: @endpoints[name]
-
-  @spec request(atom, map) :: {:err, String.t()} | {:ok, %ExConn.Request{}}
-  def request(name, params) do
-    ExConn.Endpoint.request(endpoint(name), params, ExConn.Variable.resolve!(@headers))
   end
 end
